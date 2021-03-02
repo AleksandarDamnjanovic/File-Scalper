@@ -1,8 +1,6 @@
-Small Files Remover is small and simple c program (50 lines of code) that is going to remove all files from the working directory, smaller than specified limit. 
-You need only two parameters -s that stands for smaller and actual size limit in bytes.
-Example: clear.bin -s 50000
-With clear.bin be the name of the app after you compile it.
-This command will delete all files from the curent directory smaller that 50000 bytes.
+First name of this project was Small Files Remover because I used it for purpose to scan huge file list based on parameter of file size and to remove all off files smaller than limit. Later on I realized that this app could be upgradet to do much more... so much more.
 
-How to compile it:
-	g++ main.cpp -o clear.bin
+Purpose: scan through file system for files based on some parameter and execude command to rename, move, remove, edit or simple list selected files. What this app solves? It automatize process of search and execute on huge number of files.
+
+How to compile:
+	g++ main.cpp -o fscalper
