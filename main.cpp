@@ -26,6 +26,9 @@ bool testFile(char *str);
 
 bool _d = false;
 bool _l = false;
+bool _lr= false;
+
+char *load;
 
 int main(int argc, char *argv[]){
 
@@ -48,6 +51,10 @@ int main(int argc, char *argv[]){
 
         if (strcmp("-l", argv[i]) == 0){
             _l = true;
+        }
+
+        if (strcmp("-lr", argv[i]) == 0){
+            _lr = true;
         }
 
         if (strcmp("-sb", argv[i]) == 0 || strcmp("-ss", argv[i]) == 0 
@@ -148,6 +155,11 @@ int main(int argc, char *argv[]){
         fclose(f);
     }
 
+    if(_lr){
+        printf("%s",load);
+        free(load);
+    }
+
     if (_l)
         printFileList();
 
@@ -156,7 +168,7 @@ int main(int argc, char *argv[]){
 
 void appendList(char *str){
 
-    if (!testFile(str))
+    if(!testFile(str))
         return;
 
     if (strcmp(str, "temp_file_list.txt") == 0)
@@ -238,11 +250,11 @@ void printHelp(){
     printf("\n\t-h\tprints this help.\n");
     printf("\t-help\tsame as -t.\n\n");
 
-    printf("Suport options:\n");
+    printf("Suport options:\n\n");
     printf("\t-d\tinclude subdirectories in search.\n");
     printf("\t-l\tlist all selected files.\n\n");
 
-    printf("Search options:\n");
+    printf("Search options:\n\n");
     printf("\t-sb\tfiles bigger than this value in size expressed in bytes.\n");
     printf("\t-ss\tfiles smaller than this value in size expressed in bytes.\n");
     printf("\t-se\tfiles with this exact size expressed in bytes.\n");
@@ -254,15 +266,13 @@ void printHelp(){
     printf("\t-Ctc\t(text files only)files that contain all of provided texts.\n");
     printf("\t\tIf you want to search for multiple sentences, separate them with |||\n");
     printf("\t-Ctr\t(text files only)files that contain at least one match by regular expression.\n");
+    printf("\t-lr\t(works only with -Ctr)list all of matches found in file content per every selected file.\n");
     printf("\t-Ctb\t(binary files only).files that contain provided hexadecimal pattern.\n");
 
     printf("\n");
 }
 
 bool testFile(char *str){
-
-    if(strcmp(str,"run.bin")==0)
-        return false;
 
     FILE *f;
     f = fopen(str, "r");
@@ -382,58 +392,120 @@ bool testFile(char *str){
             if(strcmp("-Ctr", conn[i].type) == 0){
 
                 std::string value(conn[i].text);
-                std::string search(buf);
+                std::string s=buf;
+                std::string search(s);
                 std::regex regex(value);
                 std::smatch sm;
-                std::regex_search(search,sm,regex);
-                if(sm.length()>0)
-                    result= true;
-                else
-                    result= false;
 
-            }else{
+                std::sregex_iterator curent(s.begin(),s.end(),regex);
+                std::sregex_iterator end;
+
+                if(_lr){
+
+                    int i=0;
+                    while(curent!=end){
+                        sm=*curent;
+
+                        std::string smm=sm.str();
+                        const char *ss= smm.c_str();
+
+                        int size;
+                        if(i==0){
+                            size=strlen(ss)+4+strlen(str);
+                        }else{
+                            size=strlen(ss)+2;
+                        }
+
+                        if(size==2)
+                            continue;
+
+                        char match[size];
+
+                        if(i==0){
+                            strcpy(match,str);
+                            strcat(match,":\n\t");
+                            strcat(match,ss);
+                            strcat(match,"\n");
+                        }else{
+                            strcpy(match,"\t");
+                            strcat(match,ss);
+                            strcat(match,"\n");
+                        }
+                        
+                        int length=strlen(match);
+
+                        if(load==NULL){
+                            load=(char*)malloc(length);
+                            int len=strlen(load);
+                            memset(load,len,'\0');
+                            strcpy(load,match);
+                        }else{
+                            load=(char*)realloc(load,strlen(load)+length*2);
+                            strcat(load,match);
+                        }
+      
+                        i++;
+                        curent++;
+                    }
+
+                }else{
+
+                    int i=0;
+                    while(curent!=end){
+                        i++;
+                        curent++;
+                    }
+                        
+                    if(i>0)
+                        result= true;
+                    else
+                        result= false;
+
+                }
+
+            }else if(strcmp("-Cta", conn[i].type) == 0 || strcmp("-Ctc", conn[i].type) == 0){
 
                 if (strstr(conn[i].text, "|||")){
 
-                    std::vector<std::string> vec;
+                        std::vector<std::string> vec;
 
-                    char cc[strlen(conn[i].text)];
-                    strcpy(cc, conn[i].text);
-                    char *ptr = strtok(cc, "|||");
+                        char cc[strlen(conn[i].text)];
+                        strcpy(cc, conn[i].text);
+                        char *ptr = strtok(cc, "|||");
 
-                    while (ptr != NULL){
-                        vec.push_back(ptr);
-                        ptr = strtok(NULL, "|||");
+                        while (ptr != NULL){
+                            vec.push_back(ptr);
+                            ptr = strtok(NULL, "|||");
+                        }
+
+                        bool sub = false;
+                        loop2:for (int i1 = 0; i1 < vec.size(); i1++){
+                            int l = vec[i1].length();
+                            char c[l];
+                            strcpy(c, vec[i1].c_str());
+
+                        if(strcmp("-Cta", conn[i].type) == 0){
+                            if (strstr(buf,c)){
+                                sub = true;
+                                break;
+                            } 
+                        }else if(strcmp("-Ctc", conn[i].type) == 0){
+                            if (strstr(buf,c))
+                                sub = true;
+                            else{
+                                sub = false;
+                                break;
+                            }  
+                        }
                     }
+                    result = sub;
 
-                    bool sub = false;
-                    loop2:for (int i1 = 0; i1 < vec.size(); i1++){
-                        int l = vec[i1].length();
-                        char c[l];
-                        strcpy(c, vec[i1].c_str());
-
-                    if(strcmp("-Cta", conn[i].type) == 0){
-                        if (strstr(buf,c)){
-                            sub = true;
-                            break;
-                        } 
-                    }else if(strcmp("-Ctc", conn[i].type) == 0){
-                        if (strstr(buf,c))
-                            sub = true;
-                        else{
-                            sub = false;
-                            break;
-                        }  
-                    }
+                }else{
+                    if (!strstr(buf,conn[i].text))
+                        result = false;
                 }
-                result = sub;
-
-            }else{
-                if (!strstr(buf,conn[i].text))
-                    result = false;
             }
         }
-    }
     
         if(strcmp("-Ctb", conn[i].type) == 0){
 
