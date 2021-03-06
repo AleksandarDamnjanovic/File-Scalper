@@ -7,12 +7,22 @@
 #include <iostream>
 #include <cstring>
 #include <string>
+#include "print_support.h"
 
 struct condition{
     char type[3];
     long value;
     char *text;
 };
+
+struct execute{
+    char type[3];
+    char *direction;
+    char *text;
+};
+
+execute *exec;
+int e_count=0;
 
 condition *conn;
 int c_count = 0;
@@ -23,6 +33,10 @@ void printHelp();
 void printFileList();
 void printError();
 bool testFile(char *str);
+void execution(char *address,char *selected);
+void no_name_excution(char *address, char *action, char *add);
+bool getFileNameContains(char *address, char *selected);
+bool getFileNameContainsRegex(char *address, char *selected);
 
 bool _d = false;
 bool _l = false;
@@ -38,6 +52,7 @@ int main(int argc, char *argv[]){
     }
 
     int conditions = 0;
+    int executions=0;
     for (int i = 1; i < argc; i++){
 
         if (strcmp("-h", argv[i]) == 0 || strcmp("-help", argv[i]) == 0){
@@ -45,17 +60,17 @@ int main(int argc, char *argv[]){
             return -1;
         }
 
-        if (strcmp("-d", argv[i]) == 0){
+        if (strcmp("-d", argv[i]) == 0)
             _d = true;
-        }
 
-        if (strcmp("-l", argv[i]) == 0){
+        if (strcmp("-l", argv[i]) == 0)
             _l = true;
-        }
 
-        if (strcmp("-lr", argv[i]) == 0){
+        if (strcmp("-lr", argv[i]) == 0)
             _lr = true;
-        }
+
+        if(strcmp("-rn", argv[i])==0)
+            executions++;
 
         if (strcmp("-sb", argv[i]) == 0 || strcmp("-ss", argv[i]) == 0 
         || strcmp("-se", argv[i]) == 0 || strcmp("-ex", argv[i]) == 0
@@ -70,7 +85,12 @@ int main(int argc, char *argv[]){
     c_count = conditions;
     conn = con;
 
+    execute ex[executions];
+    e_count=executions;
+    exec=ex;
+
     int index = 0;
+    int exec_index=0;
     for (int i = 1; i < argc; i++){
 
         if (strcmp("-sb", argv[i]) == 0 || strcmp("-ss", argv[i]) == 0 || 
@@ -125,6 +145,28 @@ int main(int argc, char *argv[]){
                 con[index].text = argv[i + 1];
                 index++;
             }
+        }else if(strcmp("-rn", argv[i]) == 0){
+
+            /*Here are executions declared and execution type given*/
+            if (strcmp("-rn", argv[i]) == 0)
+                strcpy(ex[exec_index].type, "-rn");
+
+            if (argc <= i + 1){
+                printError();
+                return -1;
+            }else
+                ex[exec_index].direction = argv[i + 1];
+            
+           /*Here are direction of executions*/
+
+            if (argc <= i + 2){
+                printError();
+                return -1;
+            }else{
+                ex[exec_index].text = argv[i+2];
+                exec_index++;
+            }
+                
         }
     }
 
@@ -184,6 +226,180 @@ void appendList(char *str){
     fwrite(temp, sizeof(char), sizeof(temp), f);
     fwrite(newLine, sizeof(char), sizeof(newLine), f);
     fclose(f);
+
+}
+
+bool getFileNameContains(char *address, char *selected){
+    std::string add=address;
+    std::string sel=selected;
+    std::string s(add);
+
+    std::smatch match;
+    std::regex reg("[a-zA-Z0-9\\s\\_\\-\\+]+[\\.]?[a-zA-Z0-9]+$");
+
+    std::sregex_iterator curent(s.begin(),s.end(),reg);
+    std::sregex_iterator end;
+    
+    match=*curent;
+    std::string fileName;
+    fileName=match.str();
+
+    char f_name[fileName.length()];
+    strcpy(f_name,fileName.c_str());
+    
+    if(strstr(f_name,selected))
+        return true;
+    else
+        return false;
+
+}
+
+bool getFileNameContainsRegex(char *address, char *selected){
+    std::string add=address;
+    std::string sel=selected;
+
+    std::string folderName=std::regex_replace(add,std::regex("[a-zA-Z0-9\\s\\_\\-\\+]+[\\.]?[a-zA-Z0-9]+$"),"");
+    std::string fileName=std::regex_replace(add,std::regex(folderName),"");
+
+    std::regex regex(selected);
+    std::smatch sm;
+    std::regex_search(add,sm,regex);
+
+    if(sm.length()>0)
+        return true;
+    else
+        return false;
+
+}
+
+void no_name_excution(char *address, char *action, char *add){
+
+    std::string ad=address;
+    std::string addition=add;
+    std::string s(ad);
+
+    std::smatch match;
+    std::regex reg("[a-zA-Z0-9\\s\\_\\-\\+]+[\\.]?[a-zA-Z0-9]+$");
+    std::regex reg_ex("[\\.]?[a-zA-Z0-9]+$");
+
+    std::sregex_iterator curent(s.begin(),s.end(),reg);
+    std::sregex_iterator end;
+    
+    match=*curent;
+    std::string fileName;
+    fileName=match.str();
+
+    std::smatch m;
+    std::sregex_iterator cur(s.begin(),s.end(),reg_ex);
+    std::sregex_iterator en;
+    
+    m=*cur;
+    std::string extension;
+    extension=m.str();
+    std::string no_extension_filename= std::regex_replace(
+        fileName,std::regex(extension),"");
+
+    std::string folderName=std::regex_replace(
+        ad,std::regex(fileName),"");
+
+    if(strcmp(action,"-rp")==0){
+
+        fileName=addition+fileName;
+        std::string full=folderName+fileName;
+        char fullName[full.length()];
+        strcpy(fullName,full.c_str());
+
+        if(rename(address,fullName)==0)
+            printf("%s renamed to %s successfully\n",address,fullName);
+        else
+            printf("%s not renamed!\n",address);
+
+    }else if(strcmp(action,"-rs")==0){
+
+        std::string full=folderName+no_extension_filename+addition+extension;
+        char fullName[full.length()];
+        strcpy(fullName,full.c_str());
+
+        if(rename(address,fullName)==0)
+            printf("%s renamed to %s successfully\n",address,fullName);
+        else
+            printf("%s not renamed!\n",address);
+
+    }else if(strcmp(action,"-rx")==0){
+
+        std::string full=folderName+no_extension_filename+addition;
+        char fullName[full.length()];
+        strcpy(fullName,full.c_str());
+
+        if(rename(address,fullName)==0)
+            printf("%s renamed to %s successfully\n",address,fullName);
+        else
+            printf("%s not renamed!\n",address);
+
+    }
+}
+
+void execution(char *address, char *selected){
+
+    std::string add=address;
+    std::string sel=selected;
+    std::string s(add);
+
+    std::smatch match;
+    std::regex reg("[a-zA-Z0-9\\s\\_\\-\\+]+[\\.]?[a-zA-Z0-9]+$");
+
+    std::sregex_iterator curent(s.begin(),s.end(),reg);
+    std::sregex_iterator end;
+    
+    match=*curent;
+    std::string fileName;
+    fileName=match.str();
+
+    std::string folderName=std::regex_replace(
+        add,std::regex(fileName),"");
+
+    int f_size=fileName.length();
+    int d_size=folderName.length();
+
+    char f_name[f_size];
+    strcpy(f_name,fileName.c_str());
+    char d_name[d_size];
+    
+    if(d_size!=0)
+        strcpy(d_name,folderName.c_str());
+
+    for(int i=0;i<e_count;i++){
+
+        if(strcmp(exec[i].type,"-rn")==0){
+            if(strcmp(exec[i].direction,"-rr")==0){
+
+                char add[strlen(f_name)];
+                strcpy(add,f_name);
+                
+                std::string s_add=add;
+                s_add=std::regex_replace(s_add,std::regex(selected), exec[i].text);
+                
+                char rep[s_add.length()];
+                strcpy(rep,s_add.c_str());
+
+                int size=d_size+strlen(rep);
+
+                char response[size];
+
+                if(d_size!=0){
+                    strcpy(response,d_name);
+                    strcat(response,rep);
+                }else
+                    strcpy(response,rep);
+                
+                if(rename(address,response)==0)
+                    printf("%s renamed to %s successfully\n",address,response);
+                else
+                    printf("%s not renamed!\n",address);
+                
+            }
+        }
+    }
 }
 
 void readSub(char *address){
@@ -219,60 +435,13 @@ void readSub(char *address){
     }
 }
 
-void printFileList(){
-    FILE *f;
-    f = fopen("temp_file_list.txt", "r");
-
-    if (f == NULL){
-        printf("There are no selected files.");
-        return;
-    }else{
-        fseek(f, 0, SEEK_END);
-        int size = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        char buffer[size];
-        fread(buffer, sizeof(char), size, f);
-        fclose(f);
-        printf("%s", buffer);
-        remove("temp_file_list.txt");
-    }
-}
-
-void printError(){
-    printf("\nConditions not set properly. Type -h for help.\n");
-}
-
-void printHelp(){
-    printf("\nFile Scalper is built for routine and fast tasks on large number of files.\n");
-    printf("Per every execution it initializes two processes. First process finds all files based on given parameters.\n");
-    printf("Second process executes command you have specified, on selected files.\n");
-
-    printf("\n\t-h\tprints this help.\n");
-    printf("\t-help\tsame as -t.\n\n");
-
-    printf("Suport options:\n\n");
-    printf("\t-d\tinclude subdirectories in search.\n");
-    printf("\t-l\tlist all selected files.\n\n");
-
-    printf("Search options:\n\n");
-    printf("\t-sb\tfiles bigger than this value in size expressed in bytes.\n");
-    printf("\t-ss\tfiles smaller than this value in size expressed in bytes.\n");
-    printf("\t-se\tfiles with this exact size expressed in bytes.\n");
-    printf("\t-ex\tfiles with extension expressed without dot.\n");
-    printf("\t-nc\tfiles with text contained in filename.\n");
-    printf("\t-nr\tfiles with names matched with regular expression.\n");
-    printf("\t-Cta\t(text files only)files that contain any of provided texts.\n");
-    printf("\t\tIf you want to search for multiple sentences, separate them with |||\n");
-    printf("\t-Ctc\t(text files only)files that contain all of provided texts.\n");
-    printf("\t\tIf you want to search for multiple sentences, separate them with |||\n");
-    printf("\t-Ctr\t(text files only)files that contain at least one match by regular expression.\n");
-    printf("\t-lr\t(works only with -Ctr)list all of matches found in file content per every selected file.\n");
-    printf("\t-Ctb\t(binary files only).files that contain provided hexadecimal pattern.\n");
-
-    printf("\n");
-}
-
 bool testFile(char *str){
+
+    bool _nc_rn_rr=false;
+    bool _nr_rn_rr=false;
+
+    char* _nc_rn_rr_text;
+    char* _nr_rn_rr_text;
 
     FILE *f;
     f = fopen(str, "r");
@@ -352,6 +521,8 @@ bool testFile(char *str){
                         strcpy(c, vec[i1].c_str());
                         if (strstr(str,c)){
                             sub = true;
+                            _nc_rn_rr=true;
+                            _nc_rn_rr_text=c;
                             break;
                         }
                     }
@@ -360,6 +531,10 @@ bool testFile(char *str){
                 }else{
                     if (!strstr(str,conn[i].text))
                         result = false;
+                    else{
+                        _nc_rn_rr=true;
+                        _nc_rn_rr_text=conn[i].text; 
+                    }  
                 }
             }
 
@@ -370,9 +545,11 @@ bool testFile(char *str){
             std::regex regex(value);
             std::smatch sm;
             std::regex_search(search,sm,regex);
-            if(sm.length()>0)
+            if(sm.length()>0){
                 result= true;
-            else
+                _nr_rn_rr=true;
+                _nr_rn_rr_text=conn[i].text;
+            }else
                 result= false;
             
         }
@@ -552,6 +729,21 @@ bool testFile(char *str){
             ll:;
         }
     }
+
+    if(_nc_rn_rr && result)
+        if(getFileNameContains(str, _nc_rn_rr_text))
+            execution(str, _nc_rn_rr_text);
+
+    if(_nr_rn_rr && result)
+        if(getFileNameContainsRegex(str, _nr_rn_rr_text))
+            execution(str, _nr_rn_rr_text);
+
+    if(result)
+        for(int i=0;i<e_count;i++)
+            if(strcmp(exec[i].type,"-rn")==0)
+                if(strcmp(exec[i].direction,"-rp")==0 || strcmp(exec[i].direction,"-rx")==0
+                || strcmp(exec[i].direction,"-rs")==0)
+                    no_name_excution(str, exec[i].direction, exec[i].text);
 
     return result;
 }
