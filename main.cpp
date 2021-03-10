@@ -8,9 +8,10 @@
 #include <cstring>
 #include <string>
 #include "print_support.h"
+#include <sys/stat.h>
 
 struct condition{
-    char type[3];
+    char type[4];
     long value;
     char *text;
 };
@@ -37,10 +38,14 @@ void execution(char *address,char *selected);
 void no_name_excution(char *address, char *action, char *add);
 bool getFileNameContains(char *address, char *selected);
 bool getFileNameContainsRegex(char *address, char *selected);
+void moveCopy(char* address, char* direction, bool move);
 
 bool _d = false;
 bool _l = false;
 bool _lr= false;
+bool _D = false;
+bool _r = false;
+bool _Rr= false;
 
 char *load;
 
@@ -63,6 +68,9 @@ int main(int argc, char *argv[]){
         if (strcmp("-d", argv[i]) == 0)
             _d = true;
 
+        if (strcmp("-rm", argv[i]) == 0)
+            _r = true;
+
         if (strcmp("-l", argv[i]) == 0)
             _l = true;
 
@@ -71,6 +79,22 @@ int main(int argc, char *argv[]){
 
         if(strcmp("-rn", argv[i])==0)
             executions++;
+
+        if(strcmp("-mv", argv[i])==0)
+            executions++;
+
+        if(strcmp("-cp", argv[i])==0)
+            executions++;
+
+        if(strcmp("-Rr", argv[i])==0){
+            _Rr = true;
+            executions++;
+        }
+            
+        if(strcmp("-D", argv[i])==0){
+            executions++;
+            _D=true;
+        }
 
         if (strcmp("-sb", argv[i]) == 0 || strcmp("-ss", argv[i]) == 0 
         || strcmp("-se", argv[i]) == 0 || strcmp("-ex", argv[i]) == 0
@@ -167,10 +191,51 @@ int main(int argc, char *argv[]){
                 exec_index++;
             }
                 
+        }else if(strcmp("-mv", argv[i]) == 0 || strcmp("-cp", argv[i]) == 0
+        || strcmp("-D", argv[i]) == 0 || strcmp("-Rr", argv[i]) == 0){
+
+            if (strcmp("-mv", argv[i]) == 0)
+                strcpy(ex[exec_index].type, "-mv");
+
+            if (strcmp("-cp", argv[i]) == 0)
+                strcpy(ex[exec_index].type, "-cp");
+
+            if (strcmp("-D", argv[i]) == 0)
+                strcpy(ex[exec_index].type, "-D\0");
+
+            if (strcmp("-Rr", argv[i]) == 0)
+                strcpy(ex[exec_index].type, "-Rr");
+
+            if (argc <= i + 1){
+                printError();
+                return -1;
+            }else{
+                ex[exec_index].direction = argv[i + 1];
+                exec_index++;
+            }
+                
         }
     }
 
-    DIR *dir = opendir(".");
+    DIR *dir=NULL;
+    char *dd=NULL;
+    if(_D){
+        for(int i=0;i<e_count;i++)
+            if(strcmp(ex[i].type,"-D\0")==0){
+                dir= opendir(ex[i].direction);
+                dd=ex[i].direction;
+                goto here;
+            }
+    }else
+        dir= opendir(".");
+
+    here:
+
+    if(dir==NULL){
+        printf("Unexisting directory\n");
+        return -1;
+    }
+
     dirent *folder;
     while ((folder = readdir(dir)) != NULL){
         FILE *f;
@@ -178,19 +243,38 @@ int main(int argc, char *argv[]){
         memset(name, '\0', strlen(name));
         sprintf(name, "%s", folder->d_name);
 
-        f = fopen(name, "r");
+        int si;
+        if(dd==NULL)
+            si=strlen(name);
+        else
+            si=strlen(name)+strlen(dd);
 
-        fseek(f, SEEK_CUR, SEEK_SET);
+        const char *address;
+        char addr[si];
+        if(dd==NULL){
+            f = fopen(name, "r");
+            address=name;
+            strcpy(addr,address);
+        }else{
+            std::string s=dd;
+            std::string s1=name;
+            s+=s1;
+            address=s.c_str();
+            strcpy(addr,address);
+            f=fopen(address , "r");
+        }
+
         fseek(f, 0, SEEK_END);
         int size = ftell(f);
         fseek(f, SEEK_CUR, SEEK_SET);
 
-        if (strcmp(name, ".") != 0 && strcmp(name, "..") != 0){
+        if (strcmp(addr, ".") != 0 && strcmp(addr, "..") != 0){
             if (size != -1)
-                appendList(name);
+                appendList((char*) addr);
             else{
                 if (_d)
-                    readSub((char *)name);
+                    if(!strstr(addr,"/.") && !strstr(addr,"/.."))
+                        readSub((char *)addr);
             }
         }
 
@@ -270,6 +354,70 @@ bool getFileNameContainsRegex(char *address, char *selected){
     else
         return false;
 
+}
+
+void moveCopy(char* address, char* direction, bool move){
+    FILE *f;
+    f=fopen(address,"rb");
+
+    fseek(f,0,SEEK_END);
+    int size= ftell(f);
+    fseek(f,0,SEEK_SET);
+    char buf[size];
+    fread(buf,sizeof(char),size,f);
+    fclose(f);
+
+    std::string add=address;
+    std::smatch match;
+    std::regex reg("[a-zA-Z0-9\\s\\_\\-\\+]+[\\.]?[a-zA-Z0-9]+$");
+    std::sregex_iterator curent(add.begin(),add.end(),reg);
+    std::sregex_iterator end;
+
+    match=*curent;
+    std::string fileName;
+    fileName=match.str();
+
+    std::string fullName=direction;
+    fullName+=fileName;
+    char dest[fullName.length()];
+    strcpy(dest,fullName.c_str());
+
+    DIR *dir;
+    dir=opendir(direction);
+    if(dir==NULL){
+        printf("Create directory %s\n",direction);
+        mkdir(direction, 0700);
+    }
+
+    dir=opendir(direction);
+    if(dir==NULL){
+        printf("Could not create %s directory\n",direction);
+        return;
+    }
+
+    time_t t;
+    srand((unsigned) time(&t));
+    int num=rand();
+    std::string prefix=std::to_string(num);
+
+    if((f=fopen(dest,"rb"))!=NULL){
+        fclose(f);
+        fullName=direction+prefix+"-"+fileName;
+        char dest1[fullName.length()];
+        strcpy(dest1,fullName.c_str());
+        f=fopen(dest1,"wb");
+    }else
+        f=fopen(dest,"wb");
+
+    fwrite(buf, sizeof(char),size, f);
+    fclose(f);
+
+    if(move){
+        remove(address);
+        printf("File %s moved to %s\n",address, direction);
+    }else
+        printf("File %s copied to %s\n",address, direction);
+    
 }
 
 void no_name_excution(char *address, char *action, char *add){
@@ -445,26 +593,25 @@ bool testFile(char *str){
 
     FILE *f;
     f = fopen(str, "r");
-    fseek(f, 0, SEEK_SET);
     fseek(f, 0, SEEK_END);
     int size = ftell(f);
     fclose(f);
 
     bool result = true;
     for (int i = 0; i < c_count; i++){
-        if (strcmp("-sb", conn[i].type) == 0)
+        if (strstr("-sb", conn[i].type))
             if (conn[i].value > size)
                 result = false;
 
-        if (strcmp("-ss", conn[i].type) == 0)
+        if (strstr("-ss", conn[i].type))
             if (result && conn[i].value < size)
                 result = false;
 
-        if (strcmp("-se", conn[i].type) == 0)
+        if (strstr("-se", conn[i].type))
             if (result && conn[i].value != size)
                 result = false;
 
-        if (strcmp("-ex", conn[i].type) == 0)
+        if (strstr("-ex", conn[i].type))
             if (result && strlen(str) > 4){
 
                 if (strstr(conn[i].text, " ")){
@@ -498,7 +645,7 @@ bool testFile(char *str){
                 }
             }
 
-        if (strcmp("-nc", conn[i].type) == 0)
+        if (strstr("-nc", conn[i].type))
             if (result && strlen(str) > 1){
 
                 if (strstr(conn[i].text, " ")){
@@ -538,7 +685,7 @@ bool testFile(char *str){
                 }
             }
 
-        if (strcmp("-nr", conn[i].type) == 0){
+        if (strstr("-nr", conn[i].type)){
             
             std::string value(conn[i].text);
             std::string search(str);
@@ -738,12 +885,56 @@ bool testFile(char *str){
         if(getFileNameContainsRegex(str, _nr_rn_rr_text))
             execution(str, _nr_rn_rr_text);
 
-    if(result)
+    if(result){
         for(int i=0;i<e_count;i++)
-            if(strcmp(exec[i].type,"-rn")==0)
+            if(strcmp(exec[i].type,"-rn")==0){
                 if(strcmp(exec[i].direction,"-rp")==0 || strcmp(exec[i].direction,"-rx")==0
                 || strcmp(exec[i].direction,"-rs")==0)
                     no_name_excution(str, exec[i].direction, exec[i].text);
+            }else if(strcmp(exec[i].type,"-mv")==0)
+                moveCopy(str, exec[i].direction, true);
+            else if(strcmp(exec[i].type,"-cp")==0)
+                moveCopy(str, exec[i].direction, false);
 
+        if(_r){
+            remove(str);
+            printf("%s removed\n",str);
+        }
+
+        if(_Rr){
+            for(int o=0;o<e_count;o++)
+                if(strcmp(exec[o].type,"-Rr")==0){
+
+                    char *reg;
+                    for(int o1=0;o1<c_count;o1++)
+                        if(strstr(conn[o1].type,"-Ct"))
+                            reg=conn[o1].text;
+
+                    FILE *ff;
+                    ff=fopen(str,"r");
+                    fseek(ff,0,SEEK_END);
+                    int ss=ftell(ff);
+                    fseek(ff,0,SEEK_SET);
+                    char b[ss];
+                    fread(b,sizeof(char),ss,ff);
+                    fclose(ff);
+
+                    std::string s=b;
+                    std::string c=exec[o].direction;
+                    std::string sr=std::regex_replace(s,std::regex(reg),c);
+
+                    char n_buf[sr.length()];
+                    strcpy(n_buf,sr.c_str());
+
+                    ff = fopen(str,"w");
+                    fwrite(n_buf,sizeof(char),sr.length(),ff);
+                    fclose(ff);
+                    printf("Commited changes on file %s\n",str);
+
+                }
+        }
+
+    }
+    
     return result;
 }

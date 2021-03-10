@@ -37,6 +37,8 @@ void printHelp(){
 
     printf("Suport options:\n\n");
     printf("\t-d\tinclude subdirectories in search.\n");
+    printf("\t-D\tprovide directory path for execution. If not specified it's going to use...\n");
+    printf("\t\t...root directory of the application.\n");
     printf("\t-l\tlist all selected files.\n");
     printf("\t-lr\t(works only with -Ctr)list all of matches found in file content per every selected file.\n\n");
 
@@ -55,12 +57,20 @@ void printHelp(){
     printf("\t-Ctb\t(binary files only).files that contain provided hexadecimal pattern.\n\n");
 
     printf("Execute options(DANGEROUS):\n\n");
+    printf("\t-cp\tCopy files to provided destination directory\n\n");
+    printf("\t-mv\tmove selected files to specified directory. If destination directory already...\n");
+    printf("\t\t...contains file name, new file name is going to have random number prefix attached...\n");
+    printf("\t\t...If your file system doesn't contains destination directory\n");
+    printf("\t\t..., File Scalper is going to create it.\n\n");
     printf("\t-rn\trename selected files. Provided support options:\n\n");
     printf("\t\t-rr\treplace search word in file names with provided name.\n");
     printf("\t\t\t...works only with -nc, -nr.\n");
     printf("\t\t-rp\tadd prefix to selected file name.\n");
     printf("\t\t-rs\tadd sufix to selected file name.\n");
-    printf("\t\t-rx\tchange extension of selected files.\n");
+    printf("\t\t-rx\tchange extension of selected files.\n\n");
+    printf("\t-rm\tremove selected files.\n\n");
+    printf("\t-Rr(works only with -Ctr) replace text matched with regular expression, with provided text.\n");
+    printf("\t\t...can easily corrupt files.\n\n");
 
     printf("\n");
 }

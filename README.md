@@ -17,6 +17,8 @@ Second process executes command you have specified, on selected files.
 Suport options:
 
         -d      include subdirectories in search.
+        -D      provide directory path for execution. If not specified it's going to use...
+                ...root directory of the application.
         -l      list all selected files.
         -lr     (works only with -Ctr)list all of matches found in file content per every selected file.
 
@@ -37,6 +39,13 @@ Search options:
 
 Execute options(DANGEROUS):
 
+        -cp     Copy files to provided destination directory
+
+        -mv     move selected files to specified directory. If destination directory already...
+                ...contains file name, new file name is going to have random number prefix attached...
+                ...If your file system doesn't contains destination directory
+                ..., File Scalper is going to create it.
+
         -rn     rename selected files. Provided support options:
 
                 -rr     replace search word in file names with provided name.
@@ -44,3 +53,8 @@ Execute options(DANGEROUS):
                 -rp     add prefix to selected file name.
                 -rs     add sufix to selected file name.
                 -rx     change extension of selected files.
+
+        -rm     remove selected files.
+
+        -Rr(works only with -Ctr) replace text matched with regular expression, with provided text.
+                ...can easily corrupt files.
