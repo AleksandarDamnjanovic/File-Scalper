@@ -1,8 +1,10 @@
+# File Scalper
+
 First name of this project was Small Files Remover because I used it for purpose to scan huge file list based on parameter of file size and to remove all off files smaller than limit. Later on I realized that this app could be upgradet to do much more... so much more.
 
 Purpose: scan through file system for files based on some parameter and execude command to rename, move, remove, edit or simple list selected files. What this app solves? It automatize process of search and execute on huge number of files.
 
-How to compile: 
+### How to compile: 
 
         g++ -g main.cpp print_support.h -o run.bin
 
@@ -14,7 +16,7 @@ Second process executes command you have specified, on selected files.
         -h      prints this help.
         -help   same as -t.
 
-Suport options:
+### Suport options:
 
         -d      include subdirectories in search.
         -D      provide directory path for execution. If not specified it's going to use...
@@ -22,7 +24,7 @@ Suport options:
         -l      list all selected files.
         -lr     (works only with -Ctr)list all of matches found in file content per every selected file.
 
-Search options:
+### Search options:
 
         -sb     files bigger than this value in size expressed in bytes.
         -ss     files smaller than this value in size expressed in bytes.
@@ -37,7 +39,7 @@ Search options:
         -Ctr    (text files only)files that contain at least one match by regular expression.
         -Ctb    (binary files only).files that contain provided hexadecimal pattern.
 
-Execute options(DANGEROUS):
+### Execute options(DANGEROUS):
 
         -cp     Copy files to provided destination directory
 
